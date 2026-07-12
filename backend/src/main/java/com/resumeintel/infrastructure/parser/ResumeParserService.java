@@ -2,7 +2,6 @@ package com.resumeintel.infrastructure.parser;
 
 import com.resumeintel.domain.enums.ResumeFileType;
 import com.resumeintel.domain.exception.BusinessException;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -19,9 +18,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
-@Slf4j
 @Service
 public class ResumeParserService {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ResumeParserService.class);
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "doc", "docx", "txt", "rtf");
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;

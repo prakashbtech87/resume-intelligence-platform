@@ -3,8 +3,6 @@ package com.resumeintel.infrastructure.parser;
 import com.resumeintel.config.AppProperties;
 import com.resumeintel.domain.enums.ResumeFileType;
 import com.resumeintel.domain.exception.BusinessException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,21 +14,25 @@ import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class AtsScannerService {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AtsScannerService.class);
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
     private static final Pattern PHONE_PATTERN = Pattern.compile(
             "(\\+?\\d{1,3}[-.\\s]?)?\\(?\\d{3}\\)?[-.\\s]?\\d{3}[-.\\s]?\\d{4}");
     private static final Pattern LINKEDIN_PATTERN = Pattern.compile(
-            "(?i)linkedin\\.com/in/[\\w-]+);
+            "(?i)linkedin\\.com/in/[\\w-]+");
     private static final Pattern GITHUB_PATTERN = Pattern.compile(
             "(?i)github\\.com/[\\w-]+");
 
     private final AppProperties appProperties;
+
+    public AtsScannerService(AppProperties appProperties) {
+        this.appProperties = appProperties;
+    }
 
     public java.util.Map<String, Object> scanResume(String resumeText, Path filePath, ResumeFileType fileType) {
         if (resumeText == null) {

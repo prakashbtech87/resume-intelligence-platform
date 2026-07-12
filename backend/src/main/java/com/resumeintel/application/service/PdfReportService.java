@@ -6,8 +6,6 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.resumeintel.config.AppProperties;
 import com.resumeintel.infrastructure.persistence.entity.AnalysisEntity;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
@@ -22,10 +20,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class PdfReportService {
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PdfReportService.class);
 
     private static final Font TITLE_FONT = new Font(Font.HELVETICA, 22, Font.BOLD, new Color(30, 58, 95));
     private static final Font HEADING_FONT = new Font(Font.HELVETICA, 14, Font.BOLD, new Color(30, 58, 95));
@@ -35,6 +33,10 @@ public class PdfReportService {
             .withZone(ZoneId.systemDefault());
 
     private final AppProperties appProperties;
+
+    public PdfReportService(AppProperties appProperties) {
+        this.appProperties = appProperties;
+    }
 
     public String generateReport(AnalysisEntity analysis) {
         try {
