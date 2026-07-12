@@ -1,23 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Upload, FileText, CheckCircle2, AlertTriangle, Cpu, HelpCircle, 
-  DollarSign, Briefcase, FileCode, Check, Star, RefreshCw, Send, ArrowRight, Download
+  DollarSign, Briefcase, FileCode, Check, Star, RefreshCw, ArrowRight, Download, XCircle
 } from 'lucide-react';
 import './App.css';
 
 function App() {
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [scanningStatus, setScanningStatus] = useState('');
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanComplete, setScanComplete] = useState(false);
-  
-  // ATS Score values
-  const [atsScore, setAtsScore] = useState(82);
   const [jobDescription, setJobDescription] = useState('');
-  const [matchScore, setMatchScore] = useState(null);
-  const [isMatching, setIsMatching] = useState(false);
+  
+  // Validation flow states
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationProgress, setValidationProgress] = useState(0);
+  const [validationStep, setValidationStep] = useState('');
+  const [validationComplete, setValidationComplete] = useState(false);
+  
+  // Scanned / matched results
+  const [atsScore, setAtsScore] = useState(0);
+  const [matchScore, setMatchScore] = useState(0);
+  const [matchedSkills, setMatchedSkills] = useState([]);
+  const [missingSkills, setMissingSkills] = useState([]);
   const [activeTab, setActiveTab] = useState('overview'); // overview, interview, salary
   
   const fileInputRef = useRef(null);
@@ -35,13 +38,15 @@ function App() {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processFile(e.dataTransfer.files[0]);
+      setFile(e.dataTransfer.files[0]);
+      setValidationComplete(false);
     }
   };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      processFile(e.target.files[0]);
+      setFile(e.target.files[0]);
+      setValidationComplete(false);
     }
   };
 
@@ -49,58 +54,89 @@ function App() {
     fileInputRef.current.click();
   };
 
-  const processFile = (selectedFile) => {
-    setFile(selectedFile);
-    setIsScanning(true);
-    setScanComplete(false);
-    setUploadProgress(0);
-    
-    // Animate progress with status updates
-    const statuses = [
-      { progress: 20, text: 'Detecting file type and encoding...' },
-      { progress: 50, text: 'Extracting content via Apache Tika/PDFBox...' },
-      { progress: 80, text: 'Running ATS parser & heuristics engine...' },
-      { progress: 100, text: 'Analysis completed successfully!' }
-    ];
+  // Perform Step-by-Step validation and matching
+  const handleValidate = () => {
+    if (!file || !jobDescription.trim()) return;
 
-    let currentStep = 0;
-    const interval = setInterval(() => {
-      if (currentStep < statuses.length) {
-        setUploadProgress(statuses[currentStep].progress);
-        setScanningStatus(statuses[currentStep].text);
-        currentStep++;
-      } else {
-        clearInterval(interval);
-        setTimeout(() => {
-          setIsScanning(false);
-          setScanComplete(true);
-        }, 500);
-      }
-    }, 850);
-  };
+    setIsValidating(true);
+    setValidationComplete(false);
+    setValidationProgress(0);
+    setValidationStep('Step 1: Scanning Resume & Extracting Metadata...');
 
-  const handleMatchCompute = () => {
-    if (!jobDescription.trim()) return;
-    setIsMatching(true);
+    // Phase 1: Scan (0% - 40%)
     setTimeout(() => {
-      // Simulate score calculation
-      const calculatedScore = Math.floor(Math.random() * (95 - 65 + 1)) + 65;
-      setMatchScore(calculatedScore);
-      setIsMatching(false);
-    }, 1500);
+      setValidationProgress(40);
+      setValidationStep('Step 2: Matching candidate profile against Job Description...');
+      
+      // Phase 2: Match (40% - 80%)
+      setTimeout(() => {
+        setValidationProgress(80);
+        setValidationStep('Step 3: Calculating compatibility index & non-matching gaps...');
+        
+        // Phase 3: Finalize (80% - 100%)
+        setTimeout(() => {
+          // Parse skills from Job Description
+          const commonSkills = [
+            'Java', 'Spring Boot', 'React', 'Docker', 'Kubernetes', 
+            'AWS', 'SQL', 'Python', 'Git', 'JavaScript', 'TypeScript', 
+            'Maven', 'REST APIs', 'PostgreSQL', 'CI/CD'
+          ];
+          
+          const foundInJd = commonSkills.filter(skill => 
+            new RegExp(`\\b${skill}\\b`, 'i').test(jobDescription)
+          );
+
+          // Default fallback skills if none detected in JD text
+          const targetSkills = foundInJd.length > 0 ? foundInJd : ['Java', 'Spring Boot', 'React', 'Docker', 'AWS', 'CI/CD'];
+          
+          // Randomly distribute to matched vs missing to simulate scanner comparison
+          const matched = [];
+          const missing = [];
+          targetSkills.forEach((skill, index) => {
+            if (index % 3 === 0) {
+              missing.push(skill);
+            } else {
+              matched.push(skill);
+            }
+          });
+
+          // If no missing skills, add a placeholder gap
+          if (missing.length === 0) {
+            missing.push('Docker');
+          }
+
+          setMatchedSkills(matched);
+          setMissingSkills(missing);
+          
+          // Calculate scores based on matches
+          const calculatedAts = Math.floor(Math.random() * (92 - 75 + 1)) + 75;
+          const calculatedMatch = Math.floor((matched.length / targetSkills.length) * 100);
+
+          setAtsScore(calculatedAts);
+          setMatchScore(calculatedMatch > 0 ? calculatedMatch : 70);
+          setValidationProgress(100);
+          setIsValidating(false);
+          setValidationComplete(true);
+        }, 1000);
+      }, 1200);
+    }, 1200);
   };
 
-  const resetScanner = () => {
+  const resetAll = () => {
     setFile(null);
-    setUploadProgress(0);
-    setScanningStatus('');
-    setIsScanning(false);
-    setScanComplete(false);
-    setMatchScore(null);
+    setJobDescription('');
+    setValidationProgress(0);
+    setValidationStep('');
+    setIsValidating(false);
+    setValidationComplete(false);
+    setMatchedSkills([]);
+    setMissingSkills([]);
+    setAtsScore(0);
+    setMatchScore(0);
   };
 
-  // SVG Dashboard Gauge calculations
-  const strokeDashoffset = 440 - (440 * (scanComplete ? atsScore : 0)) / 100;
+  const strokeDashoffsetATS = 440 - (440 * atsScore) / 100;
+  const strokeDashoffsetMatch = 440 - (440 * matchScore) / 100;
 
   return (
     <div className="app-container">
@@ -122,14 +158,14 @@ function App() {
       {/* Main Grid */}
       <div className="dashboard-grid">
         
-        {/* Left Side: Controls & Input */}
+        {/* Left Column: Input Forms */}
         <div className="flex-row-gap" style={{ flexDirection: 'column' }}>
           
           {/* Upload Resume Card */}
           <div className="glass-card">
             <h2 className="card-title">
               <Upload size={20} style={{ color: 'var(--color-primary)' }} />
-              Upload Resume
+              1. Upload Resume
             </h2>
             
             {!file ? (
@@ -148,100 +184,94 @@ function App() {
                   style={{ display: 'none' }} 
                 />
                 <FileText size={48} className="upload-icon float-animation" />
-                <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Drag & drop your resume here</p>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Supports PDF, DOCX, DOC, TXT, RTF up to 10MB</p>
+                <p style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Drag & drop candidate resume</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Supports PDF, DOCX, TXT, RTF</p>
               </div>
             ) : (
-              <div>
-                <div className="file-info">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <FileCode size={28} style={{ color: 'var(--color-secondary)' }} />
-                    <div style={{ textAlign: 'left' }}>
-                      <p style={{ fontWeight: 600, fontSize: '0.95rem' }}>{file.name}</p>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                    </div>
+              <div className="file-info">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <FileCode size={28} style={{ color: 'var(--color-secondary)' }} />
+                  <div style={{ textAlign: 'left' }}>
+                    <p style={{ fontWeight: 600, fontSize: '0.95rem' }}>{file.name}</p>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
-                  {!isScanning && (
-                    <button className="btn btn-secondary" onClick={resetScanner} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
-                      Remove
-                    </button>
-                  )}
                 </div>
-
-                {isScanning && (
-                  <div style={{ marginTop: '1.5rem', textAlign: 'left' }}>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--color-secondary)' }}>{scanningStatus}</p>
-                    <div className="progress-bar-container">
-                      <div className="progress-bar-fill" style={{ width: `${uploadProgress}%` }}></div>
-                    </div>
-                  </div>
-                )}
-
-                {scanComplete && (
-                  <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem', color: 'var(--color-success)', alignItems: 'center' }}>
-                    <CheckCircle2 size={18} />
-                    <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>File parsed successfully</span>
-                  </div>
+                {!isValidating && (
+                  <button className="btn btn-secondary" onClick={() => setFile(null)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                    Change
+                  </button>
                 )}
               </div>
             )}
           </div>
 
-          {/* Job Match Analysis */}
+          {/* Job Description Card */}
           <div className="glass-card">
             <h2 className="card-title">
               <Briefcase size={20} style={{ color: 'var(--color-secondary)' }} />
-              Job Description Match
+              2. Target Job Description
             </h2>
-            <div className="form-group">
-              <label className="form-label">Target Job Description</label>
+            <div className="form-group" style={{ margin: 0 }}>
               <textarea 
                 className="textarea" 
-                placeholder="Paste the job description here to check compatibility and missing skills..."
+                placeholder="Paste requirements, role definition, and target skills here..."
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
+                disabled={isValidating}
               />
             </div>
-            
+          </div>
+
+          {/* Action validation trigger */}
+          <div style={{ display: 'flex', gap: '1rem' }}>
             <button 
               className="btn" 
-              style={{ width: '100%' }} 
-              disabled={!scanComplete || isMatching || !jobDescription.trim()}
-              onClick={handleMatchCompute}
+              style={{ flex: 1, padding: '1rem' }} 
+              disabled={!file || !jobDescription.trim() || isValidating}
+              onClick={handleValidate}
             >
-              {isMatching ? (
+              {isValidating ? (
                 <>
                   <RefreshCw size={18} className="spin" style={{ animation: 'spin 1.5s linear infinite' }} />
-                  Analyzing Fit Score...
+                  Running Pipeline...
                 </>
               ) : (
                 <>
-                  Compute Fit Score
+                  Validate & Match Profile
                   <ArrowRight size={18} />
                 </>
               )}
             </button>
-
-            {matchScore !== null && (
-              <div style={{ marginTop: '1.5rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--bg-card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600 }}>Job Match Compatibility</span>
-                <span className="badge badge-success" style={{ fontSize: '1rem', padding: '0.4rem 0.8rem' }}>{matchScore}% Match</span>
-              </div>
+            {(file || jobDescription) && !isValidating && (
+              <button className="btn btn-secondary" onClick={resetAll}>
+                Reset
+              </button>
             )}
           </div>
 
+          {/* Validation Progress Indicator */}
+          {isValidating && (
+            <div className="glass-card" style={{ textAlign: 'left' }}>
+              <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--color-secondary)', marginBottom: '0.5rem' }}>
+                {validationStep}
+              </p>
+              <div className="progress-bar-container">
+                <div className="progress-bar-fill" style={{ width: `${validationProgress}%` }}></div>
+              </div>
+            </div>
+          )}
+
         </div>
 
-        {/* Right Side: Analysis & Metrics */}
+        {/* Right Column: Validation Gaps & Score Dashboards */}
         <div>
-          
-          {scanComplete ? (
+          {validationComplete ? (
             <div className="flex-row-gap" style={{ flexDirection: 'column' }}>
               
               {/* Tab Navigation */}
               <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255, 255, 255, 0.03)', padding: '0.25rem', borderRadius: '100px', border: '1px solid var(--bg-card-border)', width: 'fit-content' }}>
                 <button className={`btn ${activeTab === 'overview' ? '' : 'btn-secondary'}`} style={{ borderRadius: '100px', padding: '0.5rem 1.25rem', fontSize: '0.85rem' }} onClick={() => setActiveTab('overview')}>
-                  Overview
+                  Overview & Gaps
                 </button>
                 <button className={`btn ${activeTab === 'interview' ? '' : 'btn-secondary'}`} style={{ borderRadius: '100px', padding: '0.5rem 1.25rem', fontSize: '0.85rem' }} onClick={() => setActiveTab('interview')}>
                   Interview Prep
@@ -253,9 +283,9 @@ function App() {
 
               {activeTab === 'overview' && (
                 <>
-                  {/* Score & Formatting Checks */}
+                  {/* Scores dashboard */}
                   <div className="grid-cols-2">
-                    
+                    {/* ATS score circular check */}
                     <div className="glass-card ats-panel">
                       <div className="circular-gauge">
                         <svg className="circular-svg">
@@ -267,7 +297,7 @@ function App() {
                             r="70" 
                             stroke="var(--color-primary)"
                             strokeDasharray="440"
-                            strokeDashoffset={strokeDashoffset}
+                            strokeDashoffset={strokeDashoffsetATS}
                           />
                         </svg>
                         <div className="gauge-text">
@@ -275,78 +305,73 @@ function App() {
                           <span className="gauge-label">ATS Score</span>
                         </div>
                       </div>
-                      <span className="badge badge-success">Highly Compatible</span>
+                      <span className="badge badge-success">ATS Compatible</span>
                     </div>
 
-                    <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                      <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-secondary)' }}>Format Integrity</h3>
-                      
-                      <div className="list-item">
-                        <span style={{ fontSize: '0.9rem' }}>Contact Info Extracted</span>
-                        <span className="badge badge-success"><Check size={12} /> Complete</span>
+                    {/* Job Match circular check */}
+                    <div className="glass-card ats-panel">
+                      <div className="circular-gauge">
+                        <svg className="circular-svg">
+                          <circle className="gauge-bg" cx="80" cy="80" r="70" />
+                          <circle 
+                            className="gauge-fill" 
+                            cx="80" 
+                            cy="80" 
+                            r="70" 
+                            stroke="var(--color-secondary)"
+                            strokeDasharray="440"
+                            strokeDashoffset={strokeDashoffsetMatch}
+                          />
+                        </svg>
+                        <div className="gauge-text">
+                          <span className="gauge-value">{matchScore}%</span>
+                          <span className="gauge-label">Job Match</span>
+                        </div>
                       </div>
-                      <div className="list-item">
-                        <span style={{ fontSize: '0.9rem' }}>LinkedIn Link Detected</span>
-                        <span className="badge badge-success"><Check size={12} /> Yes</span>
-                      </div>
-                      <div className="list-item">
-                        <span style={{ fontSize: '0.9rem' }}>Tables & Column Check</span>
-                        <span className="badge badge-success"><Check size={12} /> Clean Layout</span>
-                      </div>
-                      <div className="list-item">
-                        <span style={{ fontSize: '0.9rem' }}>Bullet Point Density</span>
-                        <span className="badge badge-success"><Check size={12} /> Ideal</span>
-                      </div>
+                      <span className="badge badge-success">Good Fit</span>
                     </div>
-
                   </div>
 
-                  {/* Missing Skills Card */}
+                  {/* Step 3 Gaps: Matched vs Missing Skills */}
                   <div className="glass-card">
                     <h2 className="card-title">
                       <Star size={20} style={{ color: 'var(--color-accent)' }} />
-                      Missing Skills & Gap Analysis
+                      Step 3: Compatibility & Skill Gaps
                     </h2>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-                      These high-priority skills were identified as missing or weak compared to current market demands.
-                    </p>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <div className="list-item">
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontWeight: 600 }}>Docker & Kubernetes</span>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>DevOps & Containerization</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <span className="badge badge-danger">High Priority</span>
-                          <span className="badge badge-warning">Required</span>
-                        </div>
-                      </div>
-
-                      <div className="list-item">
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontWeight: 600 }}>AWS Cloud Services (EC2, S3)</span>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Infrastructure</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <span className="badge badge-danger">High Priority</span>
-                          <span className="badge badge-warning">Required</span>
+                    
+                    <div className="grid-cols-2" style={{ marginTop: '1.5rem' }}>
+                      {/* Matched Skills */}
+                      <div style={{ background: 'rgba(34, 197, 94, 0.02)', border: '1px solid rgba(34, 197, 94, 0.1)', padding: '1.25rem', borderRadius: 'var(--radius-sm)' }}>
+                        <h4 style={{ color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '1rem', fontSize: '0.95rem' }}>
+                          <CheckCircle2 size={16} />
+                          Matching Items ({matchedSkills.length})
+                        </h4>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          {matchedSkills.map((skill, index) => (
+                            <span key={index} className="badge badge-success" style={{ textTransform: 'none', letterSpacing: 0 }}>
+                              {skill}
+                            </span>
+                          ))}
                         </div>
                       </div>
 
-                      <div className="list-item">
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontWeight: 600 }}>SonarQube & Static Analysis</span>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Code Quality</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <span className="badge badge-warning">Medium Priority</span>
-                          <span className="badge badge-success">Preferred</span>
+                      {/* Missing Skills */}
+                      <div style={{ background: 'rgba(239, 68, 68, 0.02)', border: '1px solid rgba(239, 68, 68, 0.1)', padding: '1.25rem', borderRadius: 'var(--radius-sm)' }}>
+                        <h4 style={{ color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '1rem', fontSize: '0.95rem' }}>
+                          <XCircle size={16} />
+                          Non-Matching Gaps ({missingSkills.length})
+                        </h4>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          {missingSkills.map((skill, index) => (
+                            <span key={index} className="badge badge-danger" style={{ textTransform: 'none', letterSpacing: 0 }}>
+                              {skill}
+                            </span>
+                          ))}
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{ marginTop: '1.75rem', display: 'flex', justifyContent: 'flex-end' }}>
                       <button className="btn" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--bg-card-border)', color: 'white' }}>
                         <Download size={16} />
                         Download PDF Report
@@ -363,24 +388,23 @@ function App() {
                     Personalized Interview Prep
                   </h2>
                   <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                    Based on your parsed resume, here are custom generated questions you might face.
+                    Prepare for key questions designed to test both your matching skills and fill in the missing gaps:
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--bg-card-border)', borderRadius: 'var(--radius-sm)' }}>
-                      <span className="badge badge-success" style={{ marginBottom: '0.5rem', display: 'inline-block' }}>Java / Spring Boot</span>
-                      <p style={{ fontWeight: 600, fontSize: '0.95rem' }}>1. How do you manage transaction propagation levels in a multi-layered Spring Boot service structure?</p>
-                    </div>
+                    {matchedSkills.slice(0, 2).map((skill, index) => (
+                      <div key={index} style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--bg-card-border)', borderRadius: 'var(--radius-sm)' }}>
+                        <span className="badge badge-success" style={{ marginBottom: '0.5rem', display: 'inline-block' }}>{skill} (Strong)</span>
+                        <p style={{ fontWeight: 600, fontSize: '0.95rem' }}>Explain a production-level challenge you faced using {skill} and how you optimized its implementation.</p>
+                      </div>
+                    ))}
 
-                    <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--bg-card-border)', borderRadius: 'var(--radius-sm)' }}>
-                      <span className="badge badge-success" style={{ marginBottom: '0.5rem', display: 'inline-block' }}>System Design</span>
-                      <p style={{ fontWeight: 600, fontSize: '0.95rem' }}>2. Describe how you would scale the resume intelligence platform parser to handle 50,000 resume processing requests concurrently.</p>
-                    </div>
-
-                    <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--bg-card-border)', borderRadius: 'var(--radius-sm)' }}>
-                      <span className="badge badge-warning" style={{ marginBottom: '0.5rem', display: 'inline-block' }}>DevOps Gap</span>
-                      <p style={{ fontWeight: 600, fontSize: '0.95rem' }}>3. Since Docker wasn't explicitly detected on your resume, how would you containerize your Spring Boot app using a multi-stage Docker build?</p>
-                    </div>
+                    {missingSkills.slice(0, 2).map((skill, index) => (
+                      <div key={index} style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--bg-card-border)', borderRadius: 'var(--radius-sm)' }}>
+                        <span className="badge badge-danger" style={{ marginBottom: '0.5rem', display: 'inline-block' }}>{skill} (Gap)</span>
+                        <p style={{ fontWeight: 600, fontSize: '0.95rem' }}>How would you go about building out skills in {skill} to support development pipelines in this role?</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -392,39 +416,33 @@ function App() {
                     Market Salary Insights
                   </h2>
                   <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                    Calculated salary range benchmarking for matching profiles.
+                    Benchmarked salary ranges for this matching profile:
                   </p>
 
                   <div className="grid-cols-2" style={{ marginBottom: '1.5rem' }}>
                     <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--bg-card-border)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>US Market (USD)</p>
-                      <p style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-secondary)', margin: '4px 0' }}>$110K - $145K</p>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>US Base Salary Range</p>
+                      <p style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-secondary)', margin: '4px 0' }}>$115K - $150K</p>
                       <p style={{ fontSize: '0.8rem', color: 'var(--color-success)' }}>High Market Demand</p>
                     </div>
 
                     <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--bg-card-border)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Remote/Global Average</p>
-                      <p style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-primary)', margin: '4px 0' }}>$85K - $115K</p>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--color-success)' }}>Robust Growth Path</p>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Global / Remote average</p>
+                      <p style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--color-primary)', margin: '4px 0' }}>$90K - $120K</p>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--color-success)' }}>Stable Growth Segment</p>
                     </div>
-                  </div>
-
-                  <div className="list-item">
-                    <span style={{ fontWeight: 600 }}>Top Hiring Regions</span>
-                    <span>San Francisco, New York, Seattle, Austin, Bangalore (Remote)</span>
                   </div>
                 </div>
               )}
 
             </div>
           ) : (
-            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '6rem 2rem', textAlign: 'center', borderStyle: 'dashed' }}>
+            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '7rem 2rem', textAlign: 'center', borderStyle: 'dashed' }}>
               <Cpu size={48} style={{ color: 'var(--bg-card-border)', marginBottom: '1.5rem' }} className="float-animation" />
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Awaiting Analysis</h3>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: '280px' }}>Upload a candidate resume on the left to activate the AI scanning panel and see metrics in action.</p>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Awaiting Validation Pipeline</h3>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: '300px' }}>Upload a candidate resume and paste a target job description, then click "Validate & Match Profile" to trigger the three-step analysis.</p>
             </div>
           )}
-
         </div>
 
       </div>
